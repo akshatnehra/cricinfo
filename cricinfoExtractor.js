@@ -26,6 +26,7 @@ let jsdom = require("jsdom");
 let excel4node = require("excel4node");
 let pdf = require("pdf-lib");
 const { table } = require("console");
+const { match } = require("assert");
 
 // Extracting  input given in the terminal using minimist
 let args = minimist(process.argv);
@@ -61,22 +62,21 @@ responsePromise.then(function(response){
         match.team2 = teams[1].textContent;
 
         // Selecting and storing scores of both the teams 
-        // let scores = matchInfoDivs[i].querySelectorAll(".ci-team-score div strong");
-        // match.team1Score = scores[0].textContent;
-        // match.team2Score = scores[1].textContent;
+        let scores = matchInfoDivs[i].querySelectorAll(".ci-team-score div strong");
+        match.team1Score = "";
+        match.team2Score = "";
 
-        function processThis(scores, callback) {
-            
-        }
-        
         // ERROR was encountered!!!
-        // Due to async behaviour scores[0].textContent was unable to access value
-        // Used Callback to resolve this issue :)
-        let scores;
-        processThis(scores = matchInfoDivs[i].querySelectorAll(".ci-team-score div strong"), function callFunction() {
-            match.team1Score = scores[0].textContent;
-            match.team2Score = scores[1].textContent;
-        });
+        // there are few teams who's scores were blank and we were trying to access them 
+        // SOLUTION => First check if exists, then access and assign
+        if(scores.length == 2){
+            match.team1Score += scores[0].textContent;
+            match.team2Score += scores[1].textContent;
+        }
+        else if(scores.length == 1){
+            match.team1Score += scores[0].textContent;
+        }
+
 
 
         // Selecting and storing result 
@@ -87,11 +87,71 @@ responsePromise.then(function(response){
         matches.push(match);
     }
 
-    console.table(matches);
+    // Checking if we got the desired data
+    // console.table(matches);
+
+    let matchJSON = JSON.stringify(matches);
+    fs.writeFileSync("matchJSON", matchJSON, "utf-8");
+
+
+    // Adding all the teams once
+    let teams = [];
+    for(let i=0; i < matches.length; i++){
+        addTeamIfNotAdded(teams, matches[i].team1);
+        addTeamIfNotAdded(teams, matches[i].team2);
+    }
+
+    // Adding match details of all the teams as we need the data teamwise and not matchwise
+    for(let i=0; i < matches.length; i++){
+        addMatchToTeam(teams, matches[i].team1, matches[i].team2, matches[i].team1Score, matches[i].team2Score, matches[i].result);
+        addMatchToTeam(teams, matches[i].team2, matches[i].team1, matches[i].team2Score, matches[i].team1Score, matches[i].result);
+    }
+
+    let teamsJSON = JSON.stringify(teams);
+    fs.writeFileSync("teamsJSON", teamsJSON, "utf-8");
+
 
 }).catch(function(error){
     console.log(error);
 });
+
+function addMatchToTeam(teams, homeTeam, oppTeam, homeScore, oppScore, result){
+    let idx = -1;
+    for(let i = 0; i < teams.length; i++){
+        if(teams[i].name == homeTeam){
+            idx = i;
+            break;
+        }
+    }
+
+    let team = teams[idx];
+    team.matches.push({
+        vs: oppTeam,
+        selfScore: homeScore,
+        oppScore: oppScore,
+        result: result
+    });
+}
+
+function addTeamIfNotAdded(teams, teamName){
+    let flag = -1;
+    for(let i = 0; i < teams.length; i++){
+        if(teams[i].name == teamName){
+            flag = 1;
+            break;
+        }
+    }
+
+    if(flag == -1){
+        let team = {
+            name: teamName,
+            matches: []
+        };
+        teams.push(team);
+    }
+
+
+}
 
 // Make excel using excel4node
 // make pdf using pdf-lib
