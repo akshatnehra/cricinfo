@@ -110,10 +110,37 @@ responsePromise.then(function(response){
     let teamsJSON = JSON.stringify(teams);
     fs.writeFileSync("teamsJSON", teamsJSON, "utf-8");
 
+    makeExcelFile(teams, args.excel);
+
 
 }).catch(function(error){
     console.log(error);
 });
+
+function makeExcelFile(teams, excelFileName){
+    let wb = new excel4node.Workbook();
+
+    for (let i = 0; i < teams.length; i++) {
+        let tsheet = wb.addWorksheet(teams[i].name);
+
+        tsheet.cell(1,1).string("VS");
+        tsheet.cell(1,2).string("Self Score");
+        tsheet.cell(1,3).string("Opponent Score");
+        tsheet.cell(1,4).string("Result");
+
+        for (let j = 0; j < teams[i].matches.length; j++) {
+            
+            tsheet.cell(2+j,1).string(teams[i].matches[j].vs);
+            tsheet.cell(2+j,2).string(teams[i].matches[j].selfScore);
+            tsheet.cell(2+j,3).string(teams[i].matches[j].oppScore);
+            tsheet.cell(2+j,4).string(teams[i].matches[j].result);
+            
+        }
+        
+    }
+
+    wb.write(excelFileName);
+}
 
 function addMatchToTeam(teams, homeTeam, oppTeam, homeScore, oppScore, result){
     let idx = -1;
