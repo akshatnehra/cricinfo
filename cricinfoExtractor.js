@@ -20,6 +20,7 @@
 // Requiring All the modules
 
 let fs = require("fs");
+let path = require("path");
 let minimist = require("minimist");
 let axios = require("axios");
 let jsdom = require("jsdom");
@@ -111,11 +112,79 @@ responsePromise.then(function(response){
     fs.writeFileSync("teamsJSON", teamsJSON, "utf-8");
 
     makeExcelFile(teams, args.excel);
+    makeFolderAndPdfFile(teams, args.dataFolder);
 
 
 }).catch(function(error){
     console.log(error);
 });
+
+function makeFolderAndPdfFile(teams, dataFolder){
+    let isExist = fs.existsSync(dataFolder);
+    if(!isExist){
+        fs.mkdirSync(dataFolder);
+    }
+
+    for (let i = 0; i < teams.length; i++) {
+        let teamFolderPath = path.join(dataFolder, teams[i].name);
+        let isExist = fs.existsSync(teamFolderPath);
+        if(!isExist){
+            fs.mkdirSync(teamFolderPath);
+        }
+
+        for (let j = 0; j < teams[i].matches.length; j++) {
+            let match = teams[i].matches[j];
+            createScorecardPDF(teamFolderPath, teams[i].name, match);
+        }
+        
+    }
+}
+
+function createScorecardPDF(teamFolderPath, homeTeam, match){
+    let fileName = path.join(teamFolderPath, match.vs + ".pdf");
+    let template = fs.readFileSync("template.pdf");
+
+    let pdfDocPromise = pdf.PDFDocument.load(template);
+    pdfDocPromise.then(function(pdfdoc){
+        let page = pdfdoc.getPage(0);
+
+        let xcoordinate = 305;
+        let textSize = 10;
+        
+        page.drawText(homeTeam, {
+            x: xcoordinate,
+            y: 695,
+            size: textSize
+        });
+        page.drawText(match.vs, {
+            x: xcoordinate,
+            y: 670,
+            size: textSize
+        });
+        page.drawText(match.selfScore, {
+            x: xcoordinate,
+            y: 650,
+            size: textSize
+        });
+        page.drawText(match.oppScore, {
+            x: xcoordinate,
+            y: 625,
+            size: textSize
+        });
+        page.drawText(match.result, {
+            x: xcoordinate,
+            y: 605,
+            size: textSize - 2
+        });
+
+        let pdfSavePromise = pdfdoc.save();
+        pdfSavePromise.then(function(updatedPdf){
+        fs.writeFileSync(fileName, updatedPdf);
+    });
+    });
+
+    
+}
 
 function makeExcelFile(teams, excelFileName){
     let wb = new excel4node.Workbook();
