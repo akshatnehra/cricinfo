@@ -141,7 +141,7 @@ function makeFolderAndPdfFile(teams, dataFolder){
 }
 
 function createScorecardPDF(teamFolderPath, homeTeam, match){
-    let fileName = path.join(teamFolderPath, match.vs + ".pdf");
+    let fileName = path.join(teamFolderPath, match.vs);
     let template = fs.readFileSync("template.pdf");
 
     let pdfDocPromise = pdf.PDFDocument.load(template);
@@ -179,7 +179,13 @@ function createScorecardPDF(teamFolderPath, homeTeam, match){
 
         let pdfSavePromise = pdfdoc.save();
         pdfSavePromise.then(function(updatedPdf){
-        fs.writeFileSync(fileName, updatedPdf);
+            if(fs.existsSync(fileName + ".pdf")){
+                fs.writeFileSync(fileName + "1.pdf", updatedPdf);
+            }
+            else{
+                fs.writeFileSync(fileName + ".pdf", updatedPdf);
+            }
+            
     });
     });
 
